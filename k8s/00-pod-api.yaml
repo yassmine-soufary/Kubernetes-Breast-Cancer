@@ -1,0 +1,17 @@
+﻿apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bc-api-pod
+  name: bc-api-pod
+spec:
+  containers:
+  - image: bc-api:1.0
+    imagePullPolicy: IfNotPresent
+    name: bc-api-pod
+    ports:
+    - containerPort: 8000
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}

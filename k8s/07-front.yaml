@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bc-front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bc-front
+  template:
+    metadata:
+      labels:
+        app: bc-front
+    spec:
+      containers:
+        - name: front
+          image: bc-front:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8501
+          startupProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "768Mi"
+          env:
+            - name: API_URL
+              value: "http://bc-api:8000"
+            - name: APP_TITLE
+              valueFrom:
+                configMapKeyRef:
+                  name: ml-config
+                  key: APP_TITLE
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: API_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bc-front
+spec:
+  type: ClusterIP
+  selector:
+    app: bc-front
+  ports:
+    - port: 80
+      targetPort: 8501

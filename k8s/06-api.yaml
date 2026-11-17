@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bc-api
+  labels:
+    app: bc-api
+  annotations:
+    kubernetes.io/change-cause: "v1 : bc-api:1.0 + modèles v1 (linear)"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: bc-api
+  template:
+    metadata:
+      labels:
+        app: bc-api
+    spec:
+      containers:
+        - name: api
+          image: bc-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          envFrom:
+            - configMapRef:
+                name: ml-config
+            - secretRef:
+                name: minio-secret
+          env:
+            - name: MODEL_VERSION
+              value: "v1"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: API_KEY
+          volumeMounts:
+            - name: model-config
+              mountPath: /etc/model-config
+              readOnly: true
+      volumes:
+        - name: model-config
+          configMap:
+            name: model-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bc-api
+spec:
+  type: ClusterIP
+  selector:
+    app: bc-api
+  ports:
+    - port: 8000
+      targetPort: 8000
